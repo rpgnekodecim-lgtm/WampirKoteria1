@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deadfall Heights — Koteria I</title>
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Cinzel:wght@400;700;900&family=Share+Tech+Mono&family=Oswald:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black:#000000;--near:#0a0000;--surface:#0f0000;--surface2:#080000;
+    --red:#cc0000;--blood:#8b0000;--crimson:#dc143c;--dark-red:#3d0000;
+    --dim:#7a3030;--text:#c8a0a0;--text-dim:#8a5555;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--black);color:var(--text);font-family:'Oswald',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair;}
+
+  /* GRAIN */
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity:.45;}
+
+  /* BLOOD BAR */
+  .blood-bar{width:100%;height:5px;background:var(--red);box-shadow:0 0 24px var(--red),0 0 60px rgba(139,0,0,0.4);position:relative;z-index:100;}
+  .drips-wrap{position:absolute;top:5px;left:0;width:100%;display:flex;pointer-events:none;}
+  .drip{background:var(--red);border-radius:0 0 4px 4px;animation:drip linear infinite;}
+  @keyframes drip{0%{height:0;opacity:1}65%{opacity:1}100%{height:var(--h);opacity:0}}
+  @keyframes flicker{0%,93%,100%{opacity:1}94%{opacity:.7}96%{opacity:1}98%{opacity:.45}99%{opacity:1}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+  /* HERO */
+  .hero{
+    position:relative;
+    min-height:100vh;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    padding:80px 40px 60px;
+    overflow:hidden;
+  }
+  .hero-bg{position:absolute;inset:0;background:linear-gradient(180deg,#000 0%,#0d0000 50%,#050000 100%);}
+  .hero-grid{
+    position:absolute;inset:0;
+    background-image:linear-gradient(rgba(139,0,0,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(139,0,0,0.05) 1px,transparent 1px);
+    background-size:60px 60px;
+    mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 0%,transparent 100%);
+  }
+  .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 30%,rgba(139,0,0,0.15) 0%,transparent 70%);}
+  .hero-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 100% 100% at 50% 50%,transparent 40%,rgba(0,0,0,0.85) 100%);pointer-events:none;}
+
+  .hero-content{position:relative;z-index:2;text-align:center;max-width:820px;width:100%;}
+
+  .hero-badge{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;
+    color:var(--dim);text-transform:uppercase;
+    border:1px solid var(--dark-red);padding:6px 16px;
+    background:rgba(139,0,0,0.06);margin-bottom:24px;
+    animation:fadeUp 1s ease both;
+  }
+  .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--crimson);box-shadow:0 0 6px var(--crimson);}
+
+  .hero-title{
+    font-family:'UnifrakturMaguntia',cursive;
+    font-size:clamp(60px,14vw,148px);
+    color:var(--red);line-height:.8;
+    text-shadow:0 0 30px rgba(204,0,0,0.7),0 0 80px rgba(139,0,0,0.3),4px 4px 0 #000;
+    animation:flicker 10s infinite,fadeUp 1s ease .15s both;
+    margin-bottom:4px;
+  }
+  .hero-title-sub{
+    font-family:'UnifrakturMaguntia',cursive;
+    font-size:clamp(28px,5vw,56px);
+    color:var(--blood);line-height:.9;
+    text-shadow:2px 2px 0 #000;
+    animation:flicker 13s infinite 2s,fadeUp 1s ease .25s both;
+    margin-bottom:24px;
+  }
+
+  .hero-sep{display:flex;align-items:center;gap:14px;justify-content:center;margin:20px 0;animation:fadeUp 1s ease .4s both;}
+  .sep-line{width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--blood));}
+  .sep-line.r{background:linear-gradient(270deg,transparent,var(--blood));}
+  .sep-sym{color:var(--blood);font-size:14px;}
+
+  /* INFO STRIP */
+  .info-strip{
+    display:inline-flex;flex-wrap:wrap;gap:0;
+    border:1px solid var(--dark-red);
+    margin:20px auto 36px;
+    animation:fadeUp 1s ease .5s both;
+  }
+  .info-item{padding:10px 20px;border-right:1px solid var(--dark-red);background:rgba(139,0,0,0.04);text-align:center;}
+  .info-item:last-child{border-right:none;}
+  .info-label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:3px;}
+  .info-val{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--crimson);}
+
+  /* SESSION COUNTER */
+  .session-strip{
+    display:flex;align-items:center;gap:0;
+    border:1px solid var(--dark-red);
+    margin:0 auto 0;max-width:fit-content;
+    animation:fadeUp 1s ease .6s both;
+  }
+  .session-label{
+    font-family:'Share Tech Mono',monospace;font-size:10px;
+    letter-spacing:3px;color:var(--dim);text-transform:uppercase;
+    padding:12px 18px;border-right:1px solid var(--dark-red);
+    background:rgba(139,0,0,0.04);
+  }
+  .session-dots{display:flex;gap:8px;padding:12px 18px;}
+  .sdot{
+    width:28px;height:28px;border-radius:50%;
+    border:1px solid var(--dark-red);
+    background:rgba(139,0,0,0.06);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Cinzel',serif;font-size:10px;font-weight:700;
+    color:var(--dim);
+    transition:all .3s;
+  }
+  .sdot.done{background:var(--red);border-color:var(--red);color:#000;box-shadow:0 0 8px var(--red);}
+  .sdot.current{background:rgba(220,20,60,0.2);border-color:var(--crimson);color:var(--crimson);box-shadow:0 0 6px rgba(220,20,60,0.3);animation:pulse-dot 2s infinite;}
+  @keyframes pulse-dot{0%,100%{box-shadow:0 0 6px rgba(220,20,60,0.3)}50%{box-shadow:0 0 14px rgba(220,20,60,0.6)}}
+
+  /* INTRO */
+  .intro-wrap{
+    max-width:820px;margin:0 auto;
+    padding:70px 40px;
+  }
+  .intro-text{
+    font-size:15px;line-height:2;color:var(--text-dim);
+    font-weight:300;
+    position:relative;
+    border-left:2px solid var(--dark-red);
+    padding-left:28px;
+  }
+  .intro-text .break{
+    display:block;height:24px;
+    border-left:none;
+  }
+  .intro-text .highlight{color:var(--text);font-weight:400;}
+  .intro-quote{
+    border-left:3px solid var(--red);
+    padding:16px 22px;
+    background:rgba(139,0,0,0.05);
+    font-family:'Cinzel',serif;font-style:italic;
+    font-size:15px;color:var(--crimson);line-height:1.7;
+    margin-top:28px;
+  }
+
+  /* SECTION */
+  .section-wrap{max-width:1100px;margin:0 auto;padding:0 40px 80px;}
+
+  .section-header{display:flex;align-items:center;gap:18px;margin-bottom:28px;}
+  .ch-line{flex:1;height:1px;background:linear-gradient(90deg,var(--blood),transparent);}
+  .ch-line.r{background:linear-gradient(270deg,var(--blood),transparent);}
+  .ch-title{font-family:'Cinzel',serif;font-size:11px;font-weight:900;letter-spacing:5px;color:var(--blood);text-transform:uppercase;white-space:nowrap;}
+
+  /* NAV CARDS */
+  .cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;}
+
+  .nav-card{
+    position:relative;
+    background:linear-gradient(135deg,#0f0000,#080000);
+    border:1px solid var(--dark-red);
+    padding:30px 26px 24px;
+    text-decoration:none;display:block;
+    transition:border-color .3s,box-shadow .3s,background .3s;
+    overflow:hidden;
+  }
+  .nav-card::before{
+    content:'';position:absolute;top:0;left:0;
+    width:3px;height:100%;
+    background:linear-gradient(180deg,var(--red),var(--blood));
+    transition:width .3s;
+  }
+  .nav-card::after{
+    content:'';position:absolute;top:0;left:0;right:0;
+    height:1px;width:0;
+    background:linear-gradient(90deg,var(--crimson),var(--red));
+    transition:width .4s ease;
+  }
+  .nav-card:hover{border-color:var(--blood);box-shadow:0 0 40px rgba(139,0,0,0.13);background:linear-gradient(135deg,#140000,#090000);}
+  .nav-card:hover::after{width:100%;}
+  .nav-card:hover .nc-title{color:var(--crimson);text-shadow:0 0 12px rgba(220,20,60,0.35);}
+  .nav-card:hover .nc-icon{transform:scale(1.08);}
+  .nav-card:hover .nc-arrow{opacity:1;transform:translateX(0);}
+
+  .nc-tag{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:14px;display:block;}
+  .nc-icon{font-size:30px;display:block;margin-bottom:12px;transition:transform .3s;}
+  .nc-title{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;line-height:1.2;transition:color .3s,text-shadow .3s;}
+  .nc-desc{font-size:13px;line-height:1.65;color:var(--text-dim);margin-bottom:18px;}
+  .nc-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(61,0,0,0.35);padding-top:12px;}
+  .nc-status{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+  .nc-status.live{color:var(--crimson);}
+  .nc-status.live::before{content:'● ';}
+  .nc-status.soon::before{content:'○ ';}
+  .nc-arrow{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--crimson);opacity:0;transform:translateX(-8px);transition:opacity .2s,transform .2s;}
+
+  /* DISABLED */
+  .nav-card.disabled{opacity:0.4;pointer-events:none;}
+
+  /* BOTTOM QUOTE */
+  .bottom-quote{
+    max-width:700px;margin:0 auto;
+    padding:60px 40px 80px;
+    text-align:center;
+  }
+  .bq-sym{font-size:28px;color:var(--dark-red);margin-bottom:20px;display:block;}
+  .bq-text{
+    font-family:'Cinzel',serif;font-style:italic;
+    font-size:clamp(15px,2vw,20px);color:var(--crimson);
+    line-height:1.75;margin-bottom:16px;
+    text-shadow:0 0 30px rgba(220,20,60,0.15);
+  }
+  .bq-attr{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;}
+
+  /* FOOTER */
+  footer{
+    border-top:1px solid var(--dark-red);
+    padding:22px 40px;
+    display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:12px;
+    background:linear-gradient(0deg,#0f0000,transparent);
+  }
+  .footer-logo{font-family:'UnifrakturMaguntia',cursive;font-size:18px;color:var(--blood);text-decoration:none;}
+  .footer-txt{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+
+  /* REVEAL */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.visible{opacity:1;transform:translateY(0);}
+
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--black)}::-webkit-scrollbar-thumb{background:var(--blood)}
+
+  @media(max-width:900px){.cards-grid{grid-template-columns:1fr 1fr;}}
+  @media(max-width:600px){
+    .hero{padding:70px 20px 50px;}
+    .intro-wrap,.section-wrap,.bottom-quote{padding-left:20px;padding-right:20px;}
+    .cards-grid{grid-template-columns:1fr;}
+    .info-strip{flex-direction:column;width:100%;}
+    .info-item{border-right:none;border-bottom:1px solid var(--dark-red);}
+    .info-item:last-child{border-bottom:none;}
+    footer{flex-direction:column;align-items:center;text-align:center;}
+    .nav-links{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="blood-bar"><div class="drips-wrap" id="drips"></div></div>
+
+<!-- ══ HERO ══ -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-vignette"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      Wampir: Maskarada &bull; Kampania I &bull; Detroit, Michigan
+    </div>
+
+    <div class="hero-title">Deadfall</div>
+    <div class="hero-title-sub">Heights</div>
+
+    <div class="hero-sep">
+      <div class="sep-line"></div>
+      <div class="sep-sym">✦</div>
+      <div class="sep-sym">🩸</div>
+      <div class="sep-sym">✦</div>
+      <div class="sep-line r"></div>
+    </div>
+
+    <div class="info-strip">
+      <div class="info-item">
+        <span class="info-label">System</span>
+        <span class="info-val">Wampir: Maskarada</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Setting</span>
+        <span class="info-val">Detroit, Michigan</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Koteria</span>
+        <span class="info-val">I — 4 graczy</span>
+      </div>
+    </div>
+
+    <!-- SESSION COUNTER — edytuj sdot.done / sdot.current -->
+    <div class="session-strip">
+      <div class="session-label">Sesja</div>
+      <div class="session-dots">
+        <div class="sdot current">0</div>
+        <div class="sdot">1</div>
+        <div class="sdot">2</div>
+        <div class="sdot">3</div>
+        <div class="sdot">4</div>
+        <div class="sdot">5</div>
+        <div class="sdot">6</div>
+        <div class="sdot">7</div>
+        <div class="sdot">8</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ INTRO ══ -->
+<div class="intro-wrap reveal">
+  <div class="intro-text">
+    <span class="highlight">Są miejsca które system zostawia za sobą.</span> Nie z litości — po prostu nikt nie uznał że warto się fatygować. Nieukończone osiedle na obrzeżach miasta, szkielety betonowych bloków, fundamenty które sięgają głębiej niż ktokolwiek planował, rury bez wody i kable bez prądu. Projekt który padł zanim ktokolwiek się wprowadził.
+    <span class="break"></span>
+    A jednak ktoś się wprowadził. Najpierw jeden, potem dziesięciu, potem zrobiła się z tego ponad setka. Punki i matki z dziećmi, artyści i uciekinierzy, ci którym system nie zostawił adresu. Zrobili z betonu dom — bez czynszu, bez dokumentów, bez pytań o przeszłość. Graffiti pokryło każdą ścianę, w piwnicach grają koncerty od których trzęsą się stropy, na dziedzińcu zawsze pali się ogień i zawsze ktoś przy nim siedzi.
+    <span class="break"></span>
+    <span class="highlight">Deadfall Heights nie jest utopią.</span> Jest zimne, przecieka i śmierdzi farbą w sprayu. Ale jest — i to wystarczy dla tych którzy nie mają gdzie indziej być.
+    <span class="break"></span>
+    Pewnej nocy dociera do was wiadomość. Stary punk, ktoś kogo może znacie albo znacie kogoś kto go zna — pisze że ma dla was robotę. Że jego szefowa ma problem i szuka ludzi. Że płaci lojalnością, nie gotówką, ale że warto posłuchać. Coś w tym jak pisze — bez owijania w bawełnę, bez obietnic których nie może dotrzymać — mówi że nie pyta dla siebie.
+  </div>
+  <div class="intro-quote">
+    „Nikt tego nie chciał. Żaden bank, żaden właściciel, żadna rodzina. Idealne miejsce dla nas."
+  </div>
+</div>
+
+<!-- ══ DOKUMENTY ══ -->
+<div class="section-wrap">
+  <div class="section-header reveal">
+    <div class="ch-line"></div>
+    <div class="ch-title">// Dokumenty</div>
+    <div class="ch-line r"></div>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- SETTING -->
+    <a class="nav-card reveal" href="deadfall_heights.html" style="transition-delay:.05s;">
+      <span class="nc-tag">// 01 &bull; Lokacja</span>
+      <span class="nc-icon">🏚</span>
+      <div class="nc-title">Setting</div>
+      <p class="nc-desc">Deadfall Heights — pełny opis miejsca akcji. Układ terenu, lokacje, zasady squatu, klimat Detroit East Side.</p>
+      <div class="nc-footer">
+        <span class="nc-status live">Dostępny</span>
+        <span class="nc-arrow">→ Otwórz</span>
+      </div>
+    </a>
+
+    <!-- NPC -->
+    <a class="nav-card reveal disabled" href="#" style="transition-delay:.1s;">
+      <span class="nc-tag">// 02 &bull; Postacie</span>
+      <span class="nc-icon">🧛</span>
+      <div class="nc-title">NPC</div>
+      <p class="nc-desc">Kluczowe postacie niezależne świata. Uzupełniane w miarę trwania kampanii — gdy czegoś się dowiecie.</p>
+      <div class="nc-footer">
+        <span class="nc-status soon">Wkrótce</span>
+        <span class="nc-arrow">→ Otwórz</span>
+      </div>
+    </a>
+
+    <!-- NOTATKI -->
+    <a class="nav-card reveal disabled" href="#" style="transition-delay:.15s;">
+      <span class="nc-tag">// 03 &bull; Sesje</span>
+      <span class="nc-icon">📋</span>
+      <div class="nc-title">Notatki z Sesji</div>
+      <p class="nc-desc">Dziennik kampanii — co się wydarzyło, kluczowe decyzje, konsekwencje. Uzupełniany po każdej sesji.</p>
+      <div class="nc-footer">
+        <span class="nc-status soon">Wkrótce</span>
+        <span class="nc-arrow">→ Otwórz</span>
+      </div>
+    </a>
+
+    <!-- POSTACIE GRACZY -->
+    <a class="nav-card reveal" href="koteria.html" style="transition-delay:.2s;">
+      <span class="nc-tag">// 04 &bull; Koteria I</span>
+      <span class="nc-icon">🩸</span>
+      <div class="nc-title">Postacie Graczy</div>
+      <p class="nc-desc">Profile koterii — wasze postaci, powiązania, historia, rozwój w trakcie kampanii.</p>
+      <div class="nc-footer">
+        <span class="nc-status live">Dostępny — 2/4</span>
+        <span class="nc-arrow">→ Otwórz</span>
+      </div>
+    </a>
+
+    <!-- MAPA POWIĄZAŃ -->
+    <a class="nav-card reveal disabled" href="#" style="transition-delay:.25s;">
+      <span class="nc-tag">// 05 &bull; Mapa</span>
+      <span class="nc-icon">🕸</span>
+      <div class="nc-title">Mapa Powiązań</div>
+      <p class="nc-desc">Sieć relacji między postaciami, miejscami i wydarzeniami — rośnie razem z kampanią.</p>
+      <div class="nc-footer">
+        <span class="nc-status soon">Wkrótce</span>
+        <span class="nc-arrow">→ Otwórz</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ══ CYTAT ══ -->
+<div class="bottom-quote reveal">
+  <span class="bq-sym">🩸</span>
+  <div class="bq-text">
+    „W Nowym Jorku noc to spektakl.<br>W Detroit noc to fakt.<br>Nikomu nie przeszkadza że nie ma świateł —<br>nauczyli się widzieć w ciemności.<br>My też."
+  </div>
+  <div class="bq-attr">— Deadfall Heights, Detroit, Michigan</div>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <a href="#" class="footer-logo">Deadfall Heights</a>
+  <div class="footer-txt">Wampir: Maskarada &bull; Kampania I &bull; Detroit, Michigan</div>
+  <div class="footer-txt">Koteria I &bull; 4 Graczy</div>
+</footer>
+
+<script>
+  // Drips
+  const dc=document.getElementById('drips');
+  for(let i=0;i<120;i++){
+    const d=document.createElement('div');
+    d.className='drip';
+    const h=Math.random()*80+8;
+    d.style.cssText=`width:${Math.random()*3+1}px;margin-left:${Math.random()*16}px;--h:${h}px;animation-duration:${Math.random()*5+2}s;animation-delay:${Math.random()*8}s;opacity:${Math.random()*0.6+0.2};`;
+    dc.appendChild(d);
+  }
+
+  // Reveal on scroll
+  const obs=new IntersectionObserver((entries)=>{
+    entries.forEach((e,i)=>{
+      if(e.isIntersecting){
+        setTimeout(()=>e.target.classList.add('visible'),i*60);
+        obs.unobserve(e.target);
+      }
+    });
+  },{threshold:0.1,rootMargin:'0px 0px -30px 0px'});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>
